@@ -1,12 +1,17 @@
 // Seeds departments, retail branches, default settings and one test account per role.
 // Run: npm run db:seed
 //
+// Production (Hostinger): `tsx prisma/seed.ts --base` → departments, branches and settings only,
+// plus a first admin account from ADMIN_PHONE / ADMIN_NAME (role IT, password = phone, must change it).
+// Test accounts are NEVER created in --base mode.
+//
 // Test accounts: password = phone number. They are created already set up
 // (mustChangePassword = false) so you can log in right away. Set SEED_FORCE_SETUP=1
 // to have them go through the first-login screen instead.
 
 import { PrismaClient, type Role } from '@prisma/client'
 import { DEPARTMENTS, RETAIL_BRANCHES } from '../shared/business/org'
+import { normalizePhone } from '../shared/business/phone'
 import { hashPassword } from '../shared/business/password'
 import { DEFAULT_SETTINGS } from '../shared/business/types'
 
@@ -45,6 +50,12 @@ async function main() {
   }
   for (const [key, value] of Object.entries(settings)) {
     await prisma.setting.upsert({ where: { key }, update: {}, create: { key, value } })
+  }
+
+  if (process.argv.includes('--base')) {
+    await seedAdmin()
+    console.log(`Seeded ${departments.length} departments, ${branches.length} branches and settings (base mode).`)
+    return
   }
 
   // Test accounts
@@ -91,6 +102,28 @@ async function main() {
 
   console.log(`Seeded ${departments.length} departments, ${branches.length} branches, ${users.length} test users.`)
   console.table(users.map(u => ({ role: u.role, phone: u.phone, password: u.phone })))
+}
+
+/** First admin for production: only created when ADMIN_PHONE is set and that phone doesn't exist yet. */
+async function seedAdmin() {
+  const phone = normalizePhone(process.env.ADMIN_PHONE)
+  if (!process.env.ADMIN_PHONE) return
+  if (!phone) {
+    console.warn(`ADMIN_PHONE "${process.env.ADMIN_PHONE}" is not a valid Jordanian mobile number — admin not created.`)
+    return
+  }
+  const exists = await prisma.user.findUnique({ where: { phone } })
+  if (exists) return
+  await prisma.user.create({
+    data: {
+      phone,
+      name: process.env.ADMIN_NAME || 'IT Admin',
+      role: 'IT',
+      passwordHash: await hashPassword(phone),
+      mustChangePassword: true,
+    },
+  })
+  console.log(`Created admin account ${phone} (password = phone number, must be changed at first login).`)
 }
 
 main()
