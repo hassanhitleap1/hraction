@@ -1,0 +1,230 @@
+// HR Action — database schema (MySQL)
+// Run `npm run db:migrate` to create/update the tables.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EMPLOYEE // موظف
+  DIRECTOR // مدير القسم
+  HR // الموارد البشرية
+  IT // تقنية المعلومات
+  CEO // المدير التنفيذي
+}
+
+enum RequestKind {
+  HOURLY_LEAVE // مغادرة
+  VACATION // إجازة
+  ADVANCE // سلفة
+}
+
+enum RequestStatus {
+  PENDING_DIRECTOR
+  PENDING_HR
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum DeductionStatus {
+  PENDING_HR
+  APPLIED
+  REJECTED
+}
+
+model Department {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(50)
+  nameAr      String   @db.VarChar(100)
+  nameEn      String   @db.VarChar(100)
+  hasBranches Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  branches    Branch[]
+  users       User[]
+}
+
+model Branch {
+  id           Int        @id @default(autoincrement())
+  code         String     @unique @db.VarChar(50)
+  nameAr       String     @db.VarChar(100)
+  nameEn       String     @db.VarChar(100)
+  sortOrder    Int        @default(0)
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  users        User[]
+
+  @@index([departmentId])
+}
+
+model User {
+  id                 Int         @id @default(autoincrement())
+  name               String      @db.VarChar(150)
+  phone              String      @unique @db.VarChar(20) // stored as 07XXXXXXXX
+  passwordHash       String      @db.VarChar(255)
+  email              String?     @db.VarChar(150)
+  position           String?     @db.VarChar(150)
+  photoUrl           String?     @db.VarChar(255)
+  role               Role        @default(EMPLOYEE)
+  departmentId       Int?
+  department         Department? @relation(fields: [departmentId], references: [id])
+  branchId           Int?
+  branch             Branch?     @relation(fields: [branchId], references: [id])
+  baseSalary         Decimal     @default(0) @db.Decimal(12, 3) // JOD
+  hireDate           DateTime?   @db.Date
+  locale             String      @default("ar") @db.VarChar(5)
+  mustChangePassword Boolean     @default(true)
+  isActive           Boolean     @default(true)
+  // Per-employee overrides of the yearly allowances (null = use settings)
+  annualLeaveDays    Int?
+  sickLeaveDays      Int?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  requests            Request[]            @relation("RequestOwner")
+  directorDecisions   Request[]            @relation("RequestDirector")
+  hrDecisions         Request[]            @relation("RequestHr")
+  deductions          Deduction[]          @relation("DeductionOwner")
+  deductionsCreated   Deduction[]          @relation("DeductionCreator")
+  deductionsReviewed  Deduction[]          @relation("DeductionReviewer")
+  advanceInstallments AdvanceInstallment[]
+  salaryRecords       SalaryRecord[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@index([departmentId])
+  @@index([branchId])
+  @@index([role])
+}
+
+// One table for the three request types that share the approval workflow:
+// HOURLY_LEAVE (مغادرة), VACATION (إجازة), ADVANCE (سلفة)
+model Request {
+  id      Int         @id @default(autoincrement())
+  kind    RequestKind
+  // HOURLY_LEAVE: personal | work — VACATION: annual | sick — ADVANCE: null
+  subtype String?     @db.VarChar(20)
+  userId  Int
+  user    User        @relation("RequestOwner", fields: [userId], references: [id])
+
+  // HOURLY_LEAVE
+  date     DateTime? @db.Date
+  fromTime String?   @db.VarChar(5) // HH:mm
+  toTime   String?   @db.VarChar(5)
+  hours    Decimal?  @db.Decimal(5, 2)
+
+  // VACATION
+  startDate DateTime? @db.Date
+  endDate   DateTime? @db.Date
+  days      Int?
+
+  // ADVANCE
+  amount       Decimal? @db.Decimal(12, 3)
+  installments Int?
+
+  reason String?       @db.Text
+  status RequestStatus
+
+  directorId        Int?
+  director          User?     @relation("RequestDirector", fields: [directorId], references: [id])
+  directorDecision  String?   @db.VarChar(10) // approved | rejected
+  directorComment   String?   @db.Text
+  directorDecidedAt DateTime?
+
+  hrId        Int?
+  hr          User?     @relation("RequestHr", fields: [hrId], references: [id])
+  hrDecision  String?   @db.VarChar(10)
+  hrComment   String?   @db.Text
+  hrDecidedAt DateTime?
+
+  installmentRows AdvanceInstallment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, kind, status])
+  @@index([status])
+}
+
+model AdvanceInstallment {
+  id        Int     @id @default(autoincrement())
+  requestId Int
+  request   Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+  month     String  @db.VarChar(7) // YYYY-MM
+  amount    Decimal @db.Decimal(12, 3)
+
+  @@index([userId, month])
+}
+
+model Deduction {
+  id            Int             @id @default(autoincrement())
+  userId        Int
+  user          User            @relation("DeductionOwner", fields: [userId], references: [id])
+  createdById   Int
+  createdBy     User            @relation("DeductionCreator", fields: [createdById], references: [id])
+  amount        Decimal         @db.Decimal(12, 3)
+  month         String          @db.VarChar(7) // salary month YYYY-MM
+  reason        String          @db.Text
+  status        DeductionStatus
+  reviewedById  Int?
+  reviewedBy    User?           @relation("DeductionReviewer", fields: [reviewedById], references: [id])
+  reviewComment String?         @db.Text
+  reviewedAt    DateTime?
+  createdAt     DateTime        @default(now())
+
+  @@index([userId, month])
+  @@index([status])
+}
+
+model SalaryRecord {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  month      String   @db.VarChar(7)
+  baseSalary Decimal  @db.Decimal(12, 3)
+  advances   Decimal  @db.Decimal(12, 3)
+  deductions Decimal  @db.Decimal(12, 3)
+  net        Decimal  @db.Decimal(12, 3)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, month])
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    @db.VarChar(50) // translated on the client: notifications.types.<type>
+  data      Json?
+  link      String?   @db.VarChar(255)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+model Setting {
+  key   String @id @db.VarChar(100)
+  value String @db.VarChar(255)
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(50)
+  entityId  Int?
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}

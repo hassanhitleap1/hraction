@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Brand: deep petrol */
+  --color-brand-50: #eef6f7;
+  --color-brand-100: #d5e9ec;
+  --color-brand-200: #abd2d9;
+  --color-brand-300: #78b4bf;
+  --color-brand-400: #3f8c9b;
+  --color-brand-500: #1f6d7d;
+  --color-brand-600: #0f4c5c;
+  --color-brand-700: #0c3e4b;
+  --color-brand-800: #0a313b;
+  --color-brand-900: #07232b;
+
+  /* Accent: warm orange */
+  --color-accent-500: #e36414;
+  --color-accent-600: #c4520c;
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+  /* Numbers, phones and dates read left-to-right even inside Arabic text */
+  .ltr-nums {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+}
+
+/* Reusable building blocks (Tailwind v4 custom utilities, usable with @apply and variants) */
+
+@utility card {
+  @apply rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70;
+}
+
+@utility label {
+  @apply mb-1.5 block text-sm font-medium text-slate-700;
+}
+
+@utility input {
+  @apply block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-base text-slate-900 shadow-xs outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-3 focus:ring-brand-500/15 disabled:bg-slate-100 disabled:text-slate-500;
+}
+
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+@utility btn-primary {
+  @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+}
+
+@utility btn-secondary {
+  @apply btn bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50;
+}
+
+@utility btn-danger {
+  @apply btn bg-rose-600 text-white hover:bg-rose-700;
+}
+
+@utility btn-success {
+  @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
+}
+
+@utility btn-ghost {
+  @apply btn text-slate-600 hover:bg-slate-100;
+}
+
+@utility chip {
+  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+}
+
+@utility tab {
+  @apply flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold text-slate-600 transition;
+}
+
+@utility tab-active {
+  @apply bg-white text-brand-700 shadow-sm;
+}
