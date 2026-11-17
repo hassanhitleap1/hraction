@@ -79,5 +79,10 @@ async function submit() {
     <button type="submit" class="btn-primary w-full" :disabled="loading">
       {{ loading ? t('common.loading') : t('login.submit') }}
     </button>
+
+    <p class="text-center text-sm text-slate-500">
+      {{ t('login.noAccount') }}
+      <NuxtLink to="/register" class="font-semibold text-brand-600">{{ t('login.registerLink') }}</NuxtLink>
+    </p>
   </form>
 </template>

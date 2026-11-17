@@ -21,6 +21,7 @@ export type NotificationType =
   | 'deduction_pending'
   | 'deduction_applied'
   | 'deduction_rejected'
+  | 'registration_pending' // HR: someone registered and waits for activation
 
 export async function notify(
   userIds: number[],

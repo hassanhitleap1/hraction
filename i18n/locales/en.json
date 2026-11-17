@@ -80,7 +80,25 @@
     "show": "Show",
     "hide": "Hide",
     "submit": "Log in",
-    "firstTimeHint": "First time? Your password is your phone number."
+    "firstTimeHint": "First time? Your password is your phone number.",
+    "noAccount": "Don't have an account?",
+    "registerLink": "Sign up"
+  },
+  "register": {
+    "title": "Create an account",
+    "subtitle": "Enter your details and HR will activate your account.",
+    "name": "Full name",
+    "phone": "Phone number",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "passwordRules": "At least 8 characters, with a letter and a number.",
+    "department": "Department",
+    "branch": "Branch",
+    "submit": "Sign up",
+    "haveAccount": "Already have an account?",
+    "loginLink": "Log in",
+    "doneTitle": "Registration received",
+    "doneText": "HR will activate your account. After that you can log in with your phone number and password."
   },
   "setup": {
     "title": "Set up your account",
@@ -217,7 +235,8 @@
       "request_rejected": "Your {kind} request was rejected",
       "deduction_pending": "{by} recorded a {amount} deduction for {name}; it needs your review",
       "deduction_applied": "{amount} was deducted from your salary",
-      "deduction_rejected": "HR rejected the {amount} deduction for {name}"
+      "deduction_rejected": "HR rejected the {amount} deduction for {name}",
+      "registration_pending": "{name} registered a new account and is waiting for activation"
     }
   },
   "payroll": {
@@ -264,7 +283,9 @@
     "validation_error": "Please check the information you entered.",
     "invalid_id": "Invalid link.",
     "invalid_credentials": "Wrong phone number or password.",
-    "account_disabled": "This account is disabled. Please contact HR.",
+    "account_disabled": "This account is disabled or waiting for activation. Please contact HR.",
+    "invalid_phone": "Invalid phone number. Use a Jordanian mobile such as 07XXXXXXXX.",
+    "phone_already_registered": "This phone number is already registered.",
     "setup_required": "Please finish setting up your account first.",
     "setup_already_done": "Your account is already set up.",
     "passwords_do_not_match": "The passwords don't match.",
