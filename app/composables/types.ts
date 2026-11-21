@@ -73,9 +73,42 @@ export interface EmployeeItem {
   mustChangePassword: boolean
   annualLeaveDays: number | null
   sickLeaveDays: number | null
+  /** His own weekly days off (0 = Sunday … 6 = Saturday); null = the company setting */
+  weekendDays: number[] | null
 }
 
 export interface LookupsResponse {
   departments: (NamedRef & { hasBranches: boolean, branches: (NamedRef & { departmentId: number })[] })[]
   roles: { code: EmployeeItem['role'], nameAr: string, nameEn: string }[]
+}
+
+export interface AnnouncementItem {
+  id: number
+  title: string
+  body: string
+  createdAt: string
+  author: { id: number, name: string, photoUrl: string | null }
+  department: { id: number, nameAr: string, nameEn: string } | null
+  /** Optional PDF, opened from `url` (protected: only people who can see the announcement) */
+  attachment: { name: string, url: string } | null
+  /** Has the current user read it? (read = gone from the home page) */
+  read: boolean
+}
+
+export interface AnnouncementsResponse {
+  /** Visible announcements the current user hasn't read yet */
+  unread: number
+  items: AnnouncementItem[]
+}
+
+export interface EmployeeDocumentItem {
+  id: number
+  title: string
+  /** The ملحق text */
+  body: string | null
+  createdAt: string
+  updatedAt: string
+  uploadedBy: string | null
+  /** Only older ملحقات that were uploaded as files (protected link) */
+  file: { name: string, mimeType: string, url: string } | null
 }

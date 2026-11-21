@@ -1,6 +1,7 @@
 import { toOrgPerson } from './auth'
 import type { Branch, Deduction, Department, Request, User } from '@prisma/client'
 import { canCancel, canDecide, canReviewDeduction } from '#shared/business/access'
+import { parseWeekendDays } from '#shared/business/calc'
 import type { OrgPerson } from '#shared/business/types'
 
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v))
@@ -35,6 +36,8 @@ export function serializeUser(u: UserWithOrg) {
     isActive: u.isActive,
     annualLeaveDays: u.annualLeaveDays,
     sickLeaveDays: u.sickLeaveDays,
+    /** His own weekly days off; null = the company setting */
+    weekendDays: parseWeekendDays(u.weekendDays),
   }
 }
 

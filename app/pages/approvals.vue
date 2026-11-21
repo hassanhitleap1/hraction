@@ -2,7 +2,7 @@
 // Approvals inbox: requests waiting for my decision (+ deductions waiting for HR review).
 import type { DeductionItem, RequestItem } from '~/composables/types'
 
-definePageMeta({ roles: ['DIRECTOR', 'HR', 'IT'] })
+definePageMeta({ roles: ['DIRECTOR', 'HR', 'IT', 'CEO'] })
 
 const { t, locale } = useI18n()
 const apiError = useApiError()

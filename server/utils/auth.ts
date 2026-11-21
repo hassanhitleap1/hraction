@@ -13,6 +13,16 @@ export type CurrentUser = User & { department: Department | null, branch: Branch
  */
 export async function requireUser(event: H3Event, options: { allowSetup?: boolean } = {}): Promise<CurrentUser> {
   const session = await requireUserSession(event)
+
+  // "Log in as": the real HR / IT account must still be active and allowed to do it
+  if (session.impersonator) {
+    const admin = await prisma.user.findUnique({ where: { id: session.impersonator.id } })
+    if (!admin || !admin.isActive || !canManage(admin.role)) {
+      await clearUserSession(event)
+      fail(401, 'unauthorized')
+    }
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: { department: true, branch: true },
@@ -21,7 +31,8 @@ export async function requireUser(event: H3Event, options: { allowSetup?: boolea
     await clearUserSession(event)
     fail(401, 'unauthorized')
   }
-  if (user.mustChangePassword && !options.allowSetup) fail(403, 'setup_required')
+  // While impersonating, the first-login setup is skipped (only the real owner sets his password)
+  if (user.mustChangePassword && !options.allowSetup && !session.impersonator) fail(403, 'setup_required')
   return user
 }
 
@@ -59,17 +70,29 @@ export function teamWhere(actor: OrgPerson): Prisma.UserWhereInput {
   return { id: -1 } // nobody
 }
 
-/** Writes the session cookie from the user record. */
-export async function writeSession(event: H3Event, user: User) {
+/**
+ * Writes the session cookie from the user record.
+ * `impersonator`: the HR / IT account behind a "log in as" session.
+ *   undefined = keep the current one (profile / photo / language updates), null = clear it.
+ */
+export async function writeSession(event: H3Event, user: User, impersonator?: Pick<User, 'id' | 'name'> | null) {
+  const admin = impersonator === undefined ? (await getUserSession(event)).impersonator : impersonator
   await replaceUserSession(event, {
     user: {
       id: user.id,
       name: user.name,
       role: user.role,
-      mustChangePassword: user.mustChangePassword,
+      mustChangePassword: admin ? false : user.mustChangePassword,
       locale: user.locale,
       photoUrl: user.photoUrl,
     },
+    ...(admin ? { impersonator: { id: admin.id, name: admin.name } } : {}),
     loggedInAt: Date.now(),
   })
+}
+
+/** Blocks actions that only the real account owner may do (password changes) while impersonating. */
+export async function forbidWhileImpersonating(event: H3Event) {
+  const session = await getUserSession(event)
+  if (session.impersonator) fail(403, 'not_while_impersonating')
 }

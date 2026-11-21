@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE `EmployeeDocument` ADD COLUMN `body` TEXT NULL,
+    ADD COLUMN `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    MODIFY `file` VARCHAR(100) NULL,
+    MODIFY `fileName` VARCHAR(255) NULL,
+    MODIFY `mimeType` VARCHAR(100) NULL,
+    MODIFY `size` INTEGER NULL;
+

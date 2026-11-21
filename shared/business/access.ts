@@ -3,21 +3,20 @@
 // Hierarchy: CEO → HR → Director of Department → Employee
 //  - EMPLOYEE : own data only
 //  - DIRECTOR : own data + the employees of his department (and branch, if he is assigned to one)
-//  - HR / IT  : see and edit everything
-//  - CEO      : sees everything, read-only
+//  - HR / IT / CEO : see and do everything (the CEO has full access)
 
 import type { Decision, DeductionStatus, OrgPerson, RequestStatus, Role } from './types'
 
 /** HR, IT and CEO see every employee and every request. */
 export const canViewAll = (role: Role): boolean => role === 'HR' || role === 'IT' || role === 'CEO'
 
-/** HR and IT can add/edit employees, salaries, balances, settings, imports and payroll. */
-export const canManage = (role: Role): boolean => role === 'HR' || role === 'IT'
+/** HR, IT and the CEO can add/edit employees, salaries, balances, settings, imports, payroll, approvals… */
+export const canManage = (role: Role): boolean => role === 'HR' || role === 'IT' || role === 'CEO'
 
 /** Who sees the approvals inbox. */
 export const isApprover = (role: Role): boolean => role === 'DIRECTOR' || canManage(role)
 
-/** Who may record deductions (خصومات). Employees and the CEO cannot. */
+/** Who may record deductions (خصومات). Employees cannot. */
 export const canRecordDeductions = (role: Role): boolean => role === 'DIRECTOR' || canManage(role)
 
 /**
@@ -67,8 +66,8 @@ export type DecideResult =
 /**
  * Approval workflow:
  *  - Director approves → PENDING_HR, rejects → REJECTED
- *  - HR / IT approve or reject at any pending stage → final (APPROVED / REJECTED)
- *  - CEO is read-only; nobody decides on their own request
+ *  - HR / IT / CEO approve or reject at any pending stage → final (APPROVED / REJECTED)
+ *  - Nobody decides on their own request
  */
 export function decideRequest(input: {
   actor: OrgPerson

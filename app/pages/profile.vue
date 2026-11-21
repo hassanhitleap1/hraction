@@ -2,7 +2,7 @@
 // My Profile (sketch): photo · name · email · position · department · salary · hire date
 // + change password + language + salary history.
 const { t, locale, setLocale } = useI18n()
-const { fetch: refreshSession, clear } = useUserSession()
+const { fetch: refreshSession, clear, session } = useUserSession()
 const apiError = useApiError()
 useHead({ title: () => t('nav.profile') })
 
@@ -128,7 +128,7 @@ async function logout() {
     </div>
 
     <!-- Change password -->
-    <form class="card space-y-3 p-4" @submit.prevent="changePassword">
+    <form v-if="!session?.impersonator" class="card space-y-3 p-4" @submit.prevent="changePassword">
       <h3 class="font-bold text-slate-900">{{ t('profile.changePassword') }}</h3>
       <AlertBox v-if="pwError">{{ pwError }}</AlertBox>
       <AlertBox v-if="pwDone" type="success">{{ t('profile.passwordChanged') }}</AlertBox>

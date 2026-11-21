@@ -17,6 +17,6 @@ export default defineEventHandler(async (event) => {
   if (!user || !(await verifyPassword(password, user.passwordHash))) fail(401, 'invalid_credentials')
   if (!user.isActive) fail(403, 'account_disabled')
 
-  await writeSession(event, user)
+  await writeSession(event, user, null)
   return { mustChangePassword: user.mustChangePassword, locale: user.locale }
 })

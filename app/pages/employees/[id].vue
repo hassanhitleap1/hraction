@@ -42,7 +42,13 @@ const form = reactive({
   isActive: true,
   annualLeaveDays: null as number | null,
   sickLeaveDays: null as number | null,
+  // Weekly days off: null = company setting
+  weekendDays: null as number[] | null,
+  // Optional: HR / IT type the password (empty = phone number for new / unchanged for existing)
+  password: '',
+  mustChangePassword: true,
 })
+const showPassword = ref(false)
 
 function fillForm() {
   const u = details.value?.user
@@ -60,11 +66,31 @@ function fillForm() {
     isActive: u.isActive,
     annualLeaveDays: u.annualLeaveDays,
     sickLeaveDays: u.sickLeaveDays,
+    weekendDays: u.weekendDays ? [...u.weekendDays] : null,
+    password: '',
+    mustChangePassword: true,
   })
 }
 fillForm()
 
 const department = computed(() => lookups.value?.departments.find(d => d.id === form.departmentId))
+
+// Weekly days off (Saturday → Friday). Default = the company setting (admin settings page).
+const DAYS = [6, 0, 1, 2, 3, 4, 5]
+const useCompanyDays = computed({
+  get: () => form.weekendDays === null,
+  set: (v: boolean) => (form.weekendDays = v ? null : [5]),
+})
+function toggleDay(d: number) {
+  const days = form.weekendDays ?? []
+  form.weekendDays = days.includes(d) ? days.filter(x => x !== d) : [...days, d]
+}
+const daysLabel = (days: number[] | null) =>
+  days === null
+    ? t('employees.companyDaysOff')
+    : days.length
+      ? DAYS.filter(d => days.includes(d)).map(d => t(`days.${d}`)).join('، ')
+      : t('employees.noDaysOff')
 
 const error = ref('')
 const message = ref('')
@@ -74,8 +100,10 @@ async function save() {
   error.value = ''
   message.value = ''
   saving.value = true
+  const { password, mustChangePassword, ...fields } = form
   const body = {
-    ...form,
+    ...fields,
+    ...(password ? { password, mustChangePassword } : {}),
     email: form.email || null,
     position: form.position || null,
     hireDate: form.hireDate || null,
@@ -100,6 +128,29 @@ async function save() {
   }
   finally {
     saving.value = false
+  }
+}
+
+// HR / IT / CEO: log in as this employee (not as another admin, not as themselves)
+const { user: sessionUser, session } = useUserSession()
+const canLoginAs = computed(() => {
+  const u = details.value?.user
+  return !!u && perms.canManage.value && !session.value?.impersonator
+    && u.id !== sessionUser.value?.id && u.isActive && u.role !== 'HR' && u.role !== 'IT' && u.role !== 'CEO'
+})
+const loggingInAs = ref(false)
+
+async function loginAs() {
+  if (!details.value || !confirm(t('impersonate.confirm', { name: details.value.user.name }))) return
+  loggingInAs.value = true
+  try {
+    await $fetch(`/api/employees/${route.params.id}/impersonate`, { method: 'POST' })
+    // Full reload so no data from the HR account stays cached on the page
+    window.location.href = '/'
+  }
+  catch (e) {
+    error.value = apiError(e)
+    loggingInAs.value = false
   }
 }
 
@@ -143,6 +194,7 @@ async function resetPassword() {
         <div class="flex justify-between p-4"><dt class="text-slate-500">{{ t('profile.phone') }}</dt><dd class="ltr-nums">{{ details.user.phone }}</dd></div>
         <div class="flex justify-between p-4"><dt class="text-slate-500">{{ t('profile.email') }}</dt><dd>{{ details.user.email || '—' }}</dd></div>
         <div class="flex justify-between p-4"><dt class="text-slate-500">{{ t('profile.hireDate') }}</dt><dd class="ltr-nums">{{ formatDate(details.user.hireDate) }}</dd></div>
+        <div class="flex justify-between gap-4 p-4"><dt class="text-slate-500">{{ t('employees.daysOff') }}</dt><dd class="text-end">{{ daysLabel(details.user.weekendDays) }}</dd></div>
         <div class="flex justify-between p-4"><dt class="text-slate-500">{{ t('salary.base') }}</dt><dd class="ltr-nums">{{ formatMoney(details.user.baseSalary, locale) }}</dd></div>
         <div class="flex justify-between p-4"><dt class="text-slate-500">{{ t('salary.netThisMonth') }}</dt><dd class="ltr-nums font-bold text-brand-700">{{ formatMoney(details.salary.net, locale) }}</dd></div>
       </dl>
@@ -162,6 +214,12 @@ async function resetPassword() {
         </NuxtLink>
       </div>
 
+      <EmployeeDocuments v-if="perms.canManage.value" :user-id="details.user.id" can-edit />
+
+      <button v-if="canLoginAs" type="button" class="btn-primary w-full" :disabled="loggingInAs" @click="loginAs">
+        <AppIcon name="user" :size="18" />{{ loggingInAs ? t('common.loading') : t('impersonate.button') }}
+      </button>
+
       <button v-if="perms.canManage.value" type="button" class="btn-secondary w-full" @click="resetPassword">
         <AppIcon name="lock" :size="18" />{{ t('employees.resetPassword') }}
       </button>
@@ -176,8 +234,30 @@ async function resetPassword() {
       <div>
         <label class="label" for="phone">{{ t('profile.phone') }}</label>
         <input id="phone" v-model="form.phone" class="input" type="tel" dir="ltr" placeholder="07XXXXXXXX" required>
-        <p v-if="isNew" class="mt-1.5 text-xs text-slate-500">{{ t('employees.defaultPasswordHint') }}</p>
       </div>
+      <div>
+        <label class="label" for="password">{{ t('employees.password') }}</label>
+        <div class="relative">
+          <input
+            id="password"
+            v-model="form.password"
+            class="input pe-16"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="new-password"
+            dir="ltr"
+          >
+          <button type="button" class="absolute inset-y-0 end-0 px-3 text-xs font-semibold text-brand-600" @click="showPassword = !showPassword">
+            {{ showPassword ? t('login.hide') : t('login.show') }}
+          </button>
+        </div>
+        <p class="mt-1.5 text-xs text-slate-500">
+          {{ isNew ? t('employees.passwordHintNew') : t('employees.passwordHintEdit') }} {{ t('register.passwordRules') }}
+        </p>
+      </div>
+      <label v-if="form.password" class="flex items-center gap-2 text-sm font-medium sm:col-span-2">
+        <input v-model="form.mustChangePassword" type="checkbox" class="h-5 w-5 rounded accent-brand-600">
+        {{ t('employees.mustChangePassword') }}
+      </label>
       <div>
         <label class="label" for="email">{{ t('profile.email') }}</label>
         <input id="email" v-model="form.email" class="input" type="email" dir="ltr">
@@ -221,6 +301,27 @@ async function resetPassword() {
       <div>
         <label class="label" for="sick">{{ t('employees.sickOverride') }}</label>
         <input id="sick" v-model.number="form.sickLeaveDays" class="input" type="number" min="0" :placeholder="t('employees.useDefault')">
+      </div>
+      <div class="sm:col-span-2">
+        <span class="label">{{ t('employees.daysOff') }}</span>
+        <label class="mb-2 flex items-center gap-2 text-sm">
+          <input v-model="useCompanyDays" type="checkbox" class="h-5 w-5 rounded accent-brand-600">
+          {{ t('employees.useCompanyDaysOff') }}
+        </label>
+        <div v-if="!useCompanyDays" class="flex flex-wrap gap-2">
+          <button
+            v-for="d in DAYS"
+            :key="d"
+            type="button"
+            class="chip px-3 py-1.5 text-sm ring-1"
+            :class="form.weekendDays?.includes(d) ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-300'"
+            :aria-pressed="form.weekendDays?.includes(d) ?? false"
+            @click="toggleDay(d)"
+          >
+            {{ t(`days.${d}`) }}
+          </button>
+        </div>
+        <p class="mt-1.5 text-xs text-slate-500">{{ t('employees.daysOffHint') }}</p>
       </div>
       <label v-if="!isNew" class="flex items-center gap-2 text-sm font-medium sm:col-span-2">
         <input v-model="form.isActive" type="checkbox" class="h-5 w-5 rounded accent-brand-600">

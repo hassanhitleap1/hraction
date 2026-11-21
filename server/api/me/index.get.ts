@@ -1,5 +1,5 @@
 // The logged-in user's profile, balances, this month's salary and unread notifications.
-import { monthKey } from '#shared/business/calc'
+import { effectiveWeekendDays, monthKey } from '#shared/business/calc'
 
 export default defineEventHandler(async (event) => {
   const user = await requireUser(event, { allowSetup: true })
@@ -18,7 +18,8 @@ export default defineEventHandler(async (event) => {
     unreadNotifications: unread,
     settings: {
       maxAdvanceInstallments: settings.maxAdvanceInstallments,
-      weekendDays: settings.weekendDays,
+      // The days off that apply to him (used to count vacation days live in the form)
+      weekendDays: effectiveWeekendDays(user.weekendDays, settings.weekendDays),
     },
   }
 })

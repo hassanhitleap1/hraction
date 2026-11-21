@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { normalizePhone } from '#shared/business/phone'
-import { parseDateOnly } from '#shared/business/calc'
+import { formatWeekendDays, parseDateOnly } from '#shared/business/calc'
+import { hashPassword, isStrongPassword } from '#shared/business/password'
 import { prisma } from './prisma'
 import { fail } from './http'
 
@@ -18,6 +19,11 @@ export const employeeSchema = z.object({
   isActive: z.boolean().optional(),
   annualLeaveDays: z.number().int().min(0).max(365).nullable().optional(),
   sickLeaveDays: z.number().int().min(0).max(365).nullable().optional(),
+  // His weekly days off (0 = Sunday … 6 = Saturday). null = company setting, [] = works every day.
+  weekendDays: z.array(z.number().int().min(0).max(6)).max(6).nullable().optional(),
+  // Optional password typed by HR / IT. Empty = keep the current one (or phone number for a new employee).
+  password: z.string().max(100).optional().or(z.literal('')),
+  mustChangePassword: z.boolean().optional(),
 })
 
 export type EmployeeInput = z.infer<typeof employeeSchema>
@@ -62,6 +68,22 @@ export async function toEmployeeData(input: EmployeeInput, currentId?: number) {
     hireDate,
     annualLeaveDays: input.annualLeaveDays ?? null,
     sickLeaveDays: input.sickLeaveDays ?? null,
+    // Not sent (e.g. an older client) → leave unchanged
+    ...(input.weekendDays !== undefined ? { weekendDays: formatWeekendDays(input.weekendDays) } : {}),
     ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+  }
+}
+
+/**
+ * Password set by HR / IT on the employee form.
+ * Returns {} when no password was typed; otherwise the hash and whether he must change it at first login.
+ */
+export async function passwordData(input: EmployeeInput, phone: string) {
+  if (!input.password) return {}
+  if (!isStrongPassword(input.password)) fail(400, 'weak_password')
+  if (input.password === phone) fail(400, 'password_same_as_phone')
+  return {
+    passwordHash: await hashPassword(input.password),
+    mustChangePassword: input.mustChangePassword ?? true,
   }
 }

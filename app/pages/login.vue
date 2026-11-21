@@ -80,9 +80,12 @@ async function submit() {
       {{ loading ? t('common.loading') : t('login.submit') }}
     </button>
 
-    <p class="text-center text-sm text-slate-500">
+    <div class="flex items-center gap-3 text-xs text-slate-400">
+      <span class="h-px flex-1 bg-slate-200" />
       {{ t('login.noAccount') }}
-      <NuxtLink to="/register" class="font-semibold text-brand-600">{{ t('login.registerLink') }}</NuxtLink>
-    </p>
+      <span class="h-px flex-1 bg-slate-200" />
+    </div>
+
+    <NuxtLink to="/register" class="btn-secondary w-full">{{ t('register.title') }}</NuxtLink>
   </form>
 </template>

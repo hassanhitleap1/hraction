@@ -135,3 +135,41 @@ export function computeSalary(
     net: fromFils(base - adv - ded),
   }
 }
+
+/**
+ * Annual-leave days earned so far this year (accrual).
+ * Every day of work earns  yearlyDays / 12 months / 30 days.
+ * Counting starts on Jan 1 of `ref`'s year, or on the hire date if he was hired later that year,
+ * and runs up to `ref` (inclusive), using 30-day months (day 31 counts as day 30).
+ * Example: 14 days/year, counted from Jan 1 to Nov 21 → 321 days × 14/360 = 12.48 days.
+ */
+export function accruedLeaveDays(yearlyDays: number, hireDate: Date | null, ref: Date): number {
+  const year = ref.getUTCFullYear()
+  let start = new Date(Date.UTC(year, 0, 1))
+  if (hireDate && hireDate.getTime() > start.getTime()) start = hireDate
+  if (start.getTime() > ref.getTime()) return 0
+
+  const day30 = (d: Date) => Math.min(d.getUTCDate(), 30)
+  const days = (ref.getUTCMonth() - start.getUTCMonth()) * 30 + (day30(ref) - day30(start)) + 1
+  const worked = Math.min(360, Math.max(0, days))
+  return Math.round(((yearlyDays / 12 / 30) * worked) * 100) / 100
+}
+
+/**
+ * Weekly days off stored on an employee ("5,6"; "" = works every day; null = use the company setting).
+ * Days: 0 = Sunday … 6 = Saturday.
+ */
+export function parseWeekendDays(value: string | null | undefined): number[] | null {
+  if (value === null || value === undefined) return null
+  return [...new Set(value.split(',').filter(Boolean).map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort()
+}
+
+export function formatWeekendDays(days: number[] | null | undefined): string | null {
+  if (days === null || days === undefined) return null
+  return [...new Set(days.filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort().join(',')
+}
+
+/** The days off that apply to this employee: his own if HR set them, otherwise the company's. */
+export function effectiveWeekendDays(userValue: string | null | undefined, companyDays: number[]): number[] {
+  return parseWeekendDays(userValue) ?? companyDays
+}

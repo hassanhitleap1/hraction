@@ -1,13 +1,16 @@
 import { prisma } from './prisma'
 import type { User } from '@prisma/client'
-import { computeSalary, monthKey, monthRange, yearRange } from '#shared/business/calc'
+import { accruedLeaveDays, computeSalary, monthKey, monthRange, yearRange } from '#shared/business/calc'
 import type { HrSettings } from '#shared/business/types'
 
 /** Requests that count against the balance: approved ones and the ones still waiting (reserved). */
 export const COUNTING_STATUSES = ['PENDING_DIRECTOR', 'PENDING_HR', 'APPROVED'] as const
 
 export interface Balance {
+  /** Days (or hours) per year / month */
   allowance: number
+  /** Annual leave only: days earned so far (accrual). Otherwise equal to `allowance`. */
+  earned: number
   used: number
   remaining: number
 }
@@ -21,18 +24,20 @@ export interface Balances {
   hasPendingAdvance: boolean
 }
 
-const balance = (allowance: number, used: number): Balance => ({
+const balance = (allowance: number, used: number, earned = allowance): Balance => ({
   allowance,
+  earned,
   used: Math.round(used * 100) / 100,
-  remaining: Math.max(0, Math.round((allowance - used) * 100) / 100),
+  remaining: Math.max(0, Math.round((earned - used) * 100) / 100),
 })
 
 /**
  * Vacation balance for the year of `ref`, hourly-leave balance for the month of `ref`.
+ * Annual leave is earned day by day (see accruedLeaveDays): remaining = earned up to `ref` − used.
  * `excludeRequestId` lets you ignore one request (not used yet, handy for edits).
  */
 export async function getBalances(
-  user: Pick<User, 'id' | 'annualLeaveDays' | 'sickLeaveDays'>,
+  user: Pick<User, 'id' | 'annualLeaveDays' | 'sickLeaveDays' | 'hireDate'>,
   settings: HrSettings,
   ref: Date = new Date(),
 ): Promise<Balances> {
@@ -71,7 +76,10 @@ export async function getBalances(
   return {
     year,
     month,
-    annual: balance(user.annualLeaveDays ?? settings.annualLeaveDays, usedDays('annual')),
+    annual: (() => {
+      const yearly = user.annualLeaveDays ?? settings.annualLeaveDays
+      return balance(yearly, usedDays('annual'), accruedLeaveDays(yearly, user.hireDate, ref))
+    })(),
     sick: balance(user.sickLeaveDays ?? settings.sickLeaveDays, usedDays('sick')),
     hourly: balance(settings.hourlyLeaveHoursPerMonth, Number(hourly._sum.hours ?? 0)),
     hasPendingAdvance: pendingAdvance > 0,

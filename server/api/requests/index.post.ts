@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { directorsOf, initialRequestStatus } from '#shared/business/access'
-import { checkBalance, countVacationDays, hoursBetween, isValidTime, parseDateOnly } from '#shared/business/calc'
+import { checkBalance, countVacationDays, effectiveWeekendDays, hoursBetween, isValidTime, parseDateOnly } from '#shared/business/calc'
 
 const reason = z.string().trim().max(1000).optional().nullable()
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -59,7 +59,8 @@ export default defineEventHandler(async (event) => {
     if (end < start) fail(400, 'end_before_start')
     if (start.getUTCFullYear() !== end.getUTCFullYear()) fail(400, 'vacation_must_be_same_year')
 
-    const days = countVacationDays(start, end, settings.weekendDays)
+    // His own days off if HR set them, otherwise the company's
+    const days = countVacationDays(start, end, effectiveWeekendDays(user.weekendDays, settings.weekendDays))
     if (days <= 0) fail(400, 'no_working_days')
 
     const overlapping = await prisma.request.count({

@@ -8,6 +8,11 @@ declare module '#auth-utils' {
     locale: string
     photoUrl: string | null
   }
+
+  interface UserSession {
+    /** Set while HR / IT are logged in as another user ("log in as"). The real account behind the session. */
+    impersonator?: { id: number, name: string }
+  }
 }
 
 export {}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // HR / IT: import employees from the Excel sheet. Password = phone number for new users.
-definePageMeta({ roles: ['HR', 'IT'] })
+definePageMeta({ roles: ['HR', 'IT', 'CEO'] })
 
 const { t } = useI18n()
 const apiError = useApiError()

@@ -32,7 +32,9 @@
     "settings": "Settings",
     "profile": "My profile",
     "notifications": "Notifications",
-    "logout": "Log out"
+    "logout": "Log out",
+    "announcements": "Announcements",
+    "documents": "My appendices"
   },
   "roles": {
     "EMPLOYEE": "Employee",
@@ -207,7 +209,16 @@
     "defaultPasswordHint": "First password = phone number; the employee changes it at first login.",
     "resetPassword": "Reset password",
     "confirmReset": "The password will become the employee's phone number and they will have to change it. Continue?",
-    "resetDone": "Password reset to the phone number."
+    "resetDone": "Password reset to the phone number.",
+    "password": "Password",
+    "passwordHintNew": "Leave empty to use the phone number as the password.",
+    "passwordHintEdit": "Leave empty to keep the current password.",
+    "mustChangePassword": "Employee must change the password at first login",
+    "daysOff": "Weekly days off",
+    "useCompanyDaysOff": "Use the company setting",
+    "companyDaysOff": "Company setting",
+    "noDaysOff": "None (works every day)",
+    "daysOffHint": "These days are not deducted from his vacation balance."
   },
   "profile": {
     "name": "Name",
@@ -236,7 +247,9 @@
       "deduction_pending": "{by} recorded a {amount} deduction for {name}; it needs your review",
       "deduction_applied": "{amount} was deducted from your salary",
       "deduction_rejected": "HR rejected the {amount} deduction for {name}",
-      "registration_pending": "{name} registered a new account and is waiting for activation"
+      "registration_pending": "{name} registered a new account and is waiting for activation",
+      "announcement": "New announcement from {by}: {title}",
+      "document_added": "{by} added an appendix to your file: {title}"
     }
   },
   "payroll": {
@@ -284,7 +297,7 @@
     "invalid_id": "Invalid link.",
     "invalid_credentials": "Wrong phone number or password.",
     "account_disabled": "This account is disabled or waiting for activation. Please contact HR.",
-    "invalid_phone": "Invalid phone number. Use a Jordanian mobile such as 07XXXXXXXX.",
+    "invalid_phone": "Invalid phone number. Example: 0791234567",
     "phone_already_registered": "This phone number is already registered.",
     "setup_required": "Please finish setting up your account first.",
     "setup_already_done": "Your account is already set up.",
@@ -313,16 +326,86 @@
     "out_of_scope": "This employee is not in your team.",
     "already_decided": "Someone just decided on this. Refresh the page.",
     "employee_not_found": "Employee not found.",
-    "invalid_phone": "Invalid phone number. Example: 0791234567",
     "phone_taken": "This phone number belongs to another employee.",
     "cannot_disable_self": "You can't disable your own account.",
     "photo_required": "Please choose a photo.",
     "invalid_photo_type": "The photo must be JPG, PNG or WEBP.",
     "photo_too_large": "The photo is larger than 3 MB.",
-    "file_required": "Please choose an Excel file.",
-    "file_too_large": "The file is larger than 5 MB.",
-    "invalid_file_type": "The file must be .xlsx.",
+    "file_required": "Choose a file.",
+    "file_too_large": "The file is larger than 10 MB.",
+    "invalid_file_type": "File type not allowed. Allowed: PDF, images, Word, Excel.",
     "empty_file": "The file is empty.",
-    "missing_columns": "The file has no Name or Phone column."
+    "missing_columns": "The file has no Name or Phone column.",
+    "not_while_impersonating": "You can’t do this while logged in as another employee. Go back to your account first.",
+    "cannot_impersonate_self": "You can’t log in as yourself.",
+    "cannot_impersonate_admin": "HR and IT accounts can’t be used with “log in as”.",
+    "not_impersonating": "You are not logged in as another employee.",
+    "use_profile_to_change_password": "To change your own password, use your profile page.",
+    "invalid_pdf": "The attachment must be a PDF file.",
+    "pdf_too_large": "The PDF is larger than 10 MB."
+  },
+  "welcome": {
+    "title": "Action Group",
+    "badge": "Employee portal",
+    "headline": "Everything about your work at Action Group, in one place",
+    "companiesTitle": "Our companies",
+    "companiesSubtitle": "One family, one portal for every employee",
+    "featuresTitle": "What can you do in the portal?",
+    "features": {
+      "leave": "Request hourly leave and track your monthly balance.",
+      "vacation": "Submit vacation requests and follow your manager’s approval live.",
+      "advance": "Request a salary advance in a few simple steps.",
+      "salaryTitle": "Salary & deductions",
+      "salary": "See your salary details and monthly deductions."
+    },
+    "ctaTitle": "Ready to start?",
+    "ctaText": "Log in with your phone number, or create a new account and HR will activate it.",
+    "start": "Log in",
+    "openPortal": "Open the portal",
+    "rights": "All rights reserved"
+  },
+  "impersonate": {
+    "button": "Log in as this employee",
+    "confirm": "You will use the portal as {name} and see exactly what they see. Any request or approval will be recorded under their name. Continue?",
+    "banner": "You are logged in as {name} (by {admin})",
+    "stop": "Back to my account"
+  },
+  "announcements": {
+    "title": "Announcements",
+    "new": "New announcement",
+    "subject": "Title",
+    "body": "Message",
+    "audience": "Send to",
+    "everyone": "All employees",
+    "publish": "Publish",
+    "published": "Announcement published and {n} employee(s) notified.",
+    "empty": "No announcements",
+    "all": "See all",
+    "delete": "Delete announcement",
+    "confirmDelete": "Delete this announcement permanently?",
+    "attachment": "Attachment (optional)",
+    "addPdf": "Attach a PDF",
+    "removeAttachment": "Remove attachment",
+    "pdfHint": "One PDF file, up to {max} MB.",
+    "openPdf": "Open PDF",
+    "unreadCount": "{n} unread",
+    "allRead": "Nothing new",
+    "new_badge": "New"
+  },
+  "documents": {
+    "title": "Appendices",
+    "mine": "My appendices",
+    "mineHint": "Appendices HR added to your file.",
+    "add": "Add appendix",
+    "docTitle": "Title",
+    "titlePlaceholder": "e.g. Employment contract appendix",
+    "body": "Text",
+    "bodyPlaceholder": "Write the appendix here…",
+    "save": "Save appendix",
+    "added": "Appendix added and the employee notified.",
+    "edited": "edited",
+    "empty": "No appendices",
+    "delete": "Delete appendix",
+    "confirmDelete": "Delete \"{title}\" permanently?"
   }
 }

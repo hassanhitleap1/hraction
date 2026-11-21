@@ -30,6 +30,8 @@ const ICONS: Record<string, { icon: string, color: string }> = {
   deduction_applied: { icon: 'deduction', color: 'bg-rose-50 text-rose-600' },
   deduction_rejected: { icon: 'x', color: 'bg-slate-100 text-slate-600' },
   registration_pending: { icon: 'inbox', color: 'bg-sky-50 text-sky-600' },
+  announcement: { icon: 'megaphone', color: 'bg-violet-50 text-violet-600' },
+  document_added: { icon: 'paperclip', color: 'bg-brand-50 text-brand-600' },
 }
 
 async function open(n: NotificationItem) {

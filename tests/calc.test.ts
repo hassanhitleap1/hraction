@@ -71,3 +71,35 @@ test('net salary', () => {
   })
   assert.equal(computeSalary(0.3, [0.1], [0.2]).net, 0, 'no floating point drift')
 })
+
+test('accruedLeaveDays earns yearly/12/30 per day from Jan 1 or the hire date', async () => {
+  const { accruedLeaveDays } = await import('../shared/business/calc.ts')
+  const d = (s: string) => new Date(`${s}T00:00:00.000Z`)
+  // Hired before this year: Jan 1 → Nov 21 = 10×30 + 21 = 321 days → 321 × 14/360
+  assert.equal(accruedLeaveDays(14, d('2020-05-10'), d('2026-11-21')), 12.48)
+  assert.equal(accruedLeaveDays(14, null, d('2026-11-21')), 12.48)
+  // Full year
+  assert.equal(accruedLeaveDays(14, null, d('2026-12-31')), 14)
+  // Hired this year on Mar 15: Mar 15 → Nov 21 = 8×30 + 6 + 1 = 247 days
+  assert.equal(accruedLeaveDays(14, d('2026-03-15'), d('2026-11-21')), Math.round(247 * 14 / 360 * 100) / 100)
+  // Not hired yet
+  assert.equal(accruedLeaveDays(14, d('2026-12-01'), d('2026-11-21')), 0)
+  // First day of work earns one day's share
+  assert.equal(accruedLeaveDays(14, null, d('2026-01-01')), 0.04)
+})
+
+test('per-employee weekend days override the company setting', async () => {
+  const { parseWeekendDays, formatWeekendDays, effectiveWeekendDays } = await import('../shared/business/calc.ts')
+  assert.equal(parseWeekendDays(null), null)
+  assert.deepEqual(parseWeekendDays('6,5,5,9,x'), [5, 6])
+  assert.deepEqual(parseWeekendDays(''), []) // works every day
+  assert.equal(formatWeekendDays([6, 5, 5]), '5,6')
+  assert.equal(formatWeekendDays(null), null)
+  assert.deepEqual(effectiveWeekendDays(null, [5]), [5]) // company default
+  assert.deepEqual(effectiveWeekendDays('5,6', [5]), [5, 6]) // his own
+  assert.deepEqual(effectiveWeekendDays('', [5]), []) // no days off
+  // A Fri+Sat employee: Thu 2026-11-19 → Sun 2026-11-22 = Thu + Sun = 2 days
+  const d = (s: string) => new Date(`${s}T00:00:00.000Z`)
+  assert.equal(countVacationDays(d('2026-11-19'), d('2026-11-22'), effectiveWeekendDays('5,6', [5])), 2)
+  assert.equal(countVacationDays(d('2026-11-19'), d('2026-11-22'), effectiveWeekendDays(null, [5])), 3)
+})

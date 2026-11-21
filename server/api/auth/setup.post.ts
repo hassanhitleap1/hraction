@@ -11,6 +11,7 @@ const schema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  await forbidWhileImpersonating(event)
   const user = await requireUser(event, { allowSetup: true })
   if (!user.mustChangePassword) fail(400, 'setup_already_done')
 

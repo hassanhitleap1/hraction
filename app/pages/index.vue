@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { AnnouncementsResponse } from '~/composables/types'
+
 const { t, locale } = useI18n()
 const perms = usePermissions()
 const { data: me, refresh } = await useMe()
@@ -10,6 +12,12 @@ onMounted(() => refresh())
 const { data: approvals } = await useFetch<{ requests: unknown[], deductions: unknown[] }>('/api/approvals', {
   immediate: perms.isApprover.value,
 })
+// Unread announcements (تعاميم): shown on the home page until he opens them
+const { data: announcements } = await useFetch<AnnouncementsResponse>('/api/announcements', {
+  key: 'home-announcements',
+  query: { unread: 1, limit: 3 },
+})
+
 const pendingCount = computed(() => (approvals.value?.requests.length ?? 0) + (approvals.value?.deductions.length ?? 0))
 
 const tiles = computed(() => {
@@ -44,7 +52,16 @@ const tiles = computed(() => {
       hint: s && s.deductions > 0 ? formatMoney(s.deductions, locale.value) : t('home.noDeductions'),
       color: 'bg-rose-50 text-rose-600',
     },
-  ]
+    {
+      to: '/announcements',
+      icon: 'megaphone',
+      title: t('announcements.title'),
+      hint: announcements.value?.unread ? t('announcements.unreadCount', { n: announcements.value.unread }) : t('announcements.allRead'),
+      color: 'bg-violet-50 text-violet-600',
+      badge: announcements.value?.unread ?? 0,
+      wide: true,
+    },
+  ] as { to: string, icon: string, title: string, hint: string, color: string, badge?: number, wide?: boolean }[]
 })
 </script>
 
@@ -69,17 +86,47 @@ const tiles = computed(() => {
       <AppIcon name="forward" class="rtl:rotate-180" />
     </NuxtLink>
 
-    <!-- The 4 main tiles -->
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <!-- Latest announcements -->
+    <section v-if="announcements?.items.length" class="mb-4">
+      <div class="mb-2 flex items-center justify-between">
+        <h2 class="flex items-center gap-2 font-bold text-slate-900">
+          <AppIcon name="megaphone" :size="20" class="text-violet-600" />{{ t('announcements.title') }}
+        </h2>
+        <NuxtLink to="/announcements" class="text-sm font-semibold text-brand-600">{{ t('announcements.all') }}</NuxtLink>
+      </div>
+      <div class="space-y-2">
+        <NuxtLink
+          v-for="a in announcements.items"
+          :key="a.id"
+          :to="`/announcements#a${a.id}`"
+          class="card block border-s-4 border-violet-500 p-4 transition hover:shadow-md"
+        >
+          <p class="font-semibold text-slate-900">{{ a.title }}</p>
+          <p class="mt-1 line-clamp-2 text-sm text-slate-600">{{ a.body }}</p>
+          <p class="mt-2 flex items-center gap-1 text-xs text-slate-400">
+            {{ a.author.name }} · <span class="ltr-nums">{{ formatDate(a.createdAt) }}</span>
+            <span v-if="a.attachment" class="ms-auto inline-flex items-center gap-1 font-semibold text-rose-600"><AppIcon name="paperclip" :size="14" />PDF</span>
+          </p>
+        </NuxtLink>
+      </div>
+    </section>
+
+    <!-- Main tiles (the announcements tile is full width on phones) -->
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
       <NuxtLink
         v-for="tile in tiles"
         :key="tile.to"
         :to="tile.to"
-        class="card flex aspect-square flex-col justify-between p-4 transition hover:-translate-y-0.5 hover:shadow-md sm:aspect-auto sm:min-h-36"
+        class="card relative flex flex-col justify-between p-4 transition hover:-translate-y-0.5 hover:shadow-md sm:aspect-auto sm:min-h-36"
+        :class="tile.wide ? 'col-span-2 min-h-28 lg:col-span-1' : 'aspect-square'"
       >
         <span class="flex h-12 w-12 items-center justify-center rounded-2xl" :class="tile.color">
           <AppIcon :name="tile.icon" :size="26" />
         </span>
+        <span
+          v-if="tile.badge"
+          class="absolute end-3 top-3 flex h-6 min-w-6 items-center justify-center rounded-full bg-violet-600 px-1.5 text-xs font-bold text-white"
+        >{{ tile.badge > 99 ? '99+' : tile.badge }}</span>
         <span>
           <span class="block text-lg font-bold text-slate-900">{{ tile.title }}</span>
           <span class="mt-0.5 block text-xs text-slate-500">{{ tile.hint }}</span>

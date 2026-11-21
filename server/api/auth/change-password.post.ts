@@ -8,6 +8,7 @@ const schema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  await forbidWhileImpersonating(event)
   const user = await requireUser(event)
   const body = await parseBody(event, schema)
 

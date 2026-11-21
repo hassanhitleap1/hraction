@@ -39,14 +39,15 @@ enum DeductionStatus {
 }
 
 model Department {
-  id          Int      @id @default(autoincrement())
-  code        String   @unique @db.VarChar(50)
-  nameAr      String   @db.VarChar(100)
-  nameEn      String   @db.VarChar(100)
-  hasBranches Boolean  @default(false)
-  sortOrder   Int      @default(0)
-  branches    Branch[]
-  users       User[]
+  id            Int            @id @default(autoincrement())
+  code          String         @unique @db.VarChar(50)
+  nameAr        String         @db.VarChar(100)
+  nameEn        String         @db.VarChar(100)
+  hasBranches   Boolean        @default(false)
+  sortOrder     Int            @default(0)
+  branches      Branch[]
+  users         User[]
+  announcements Announcement[]
 }
 
 model Branch {
@@ -83,6 +84,7 @@ model User {
   // Per-employee overrides of the yearly allowances (null = use settings)
   annualLeaveDays    Int?
   sickLeaveDays      Int?
+  weekendDays        String?     @db.VarChar(20) // his weekly days off, e.g. "5,6" (0 = Sunday … 6 = Saturday); null = company setting
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 
@@ -96,6 +98,10 @@ model User {
   salaryRecords       SalaryRecord[]
   notifications       Notification[]
   auditLogs           AuditLog[]
+  announcements       Announcement[]
+  announcementReads   AnnouncementRead[]
+  documents           EmployeeDocument[]   @relation("DocumentOwner")
+  documentsUploaded   EmployeeDocument[]   @relation("DocumentUploader")
 
   @@index([departmentId])
   @@index([branchId])
@@ -227,4 +233,54 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([entity, entityId])
+}
+
+// تعميم: posted by HR / IT, shown on the home page and sent as a notification.
+model Announcement {
+  id             Int                @id @default(autoincrement())
+  title          String             @db.VarChar(200)
+  body           String             @db.Text
+  // Optional PDF: stored in <uploadDir>/announcements/<attachmentFile>, served by /api/announcements/:id/file
+  attachmentFile String?            @db.VarChar(100)
+  attachmentName String?            @db.VarChar(255) // original file name, shown to employees
+  departmentId   Int? // null = everyone
+  department     Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  authorId       Int
+  author         User               @relation(fields: [authorId], references: [id])
+  createdAt      DateTime           @default(now())
+  reads          AnnouncementRead[]
+
+  @@index([createdAt])
+}
+
+// Who has read which announcement (read = it disappears from his home page).
+model AnnouncementRead {
+  announcementId Int
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@id([announcementId, userId])
+  @@index([userId])
+}
+
+// ملحقات: written by HR / IT on an employee file (e.g. contract appendix). Only he and HR / IT can see them.
+// The file columns are only filled for older ملحقات that were uploaded as files.
+model EmployeeDocument {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation("DocumentOwner", fields: [userId], references: [id], onDelete: Cascade)
+  title        String   @db.VarChar(200)
+  body         String?  @db.Text
+  file         String?  @db.VarChar(100) // stored name in <uploadDir>/documents/ (older file ملحقات)
+  fileName     String?  @db.VarChar(255)
+  mimeType     String?  @db.VarChar(100)
+  size         Int?
+  uploadedById Int?
+  uploadedBy   User?    @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([userId])
 }

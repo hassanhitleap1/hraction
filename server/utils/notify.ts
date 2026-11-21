@@ -22,6 +22,8 @@ export type NotificationType =
   | 'deduction_applied'
   | 'deduction_rejected'
   | 'registration_pending' // HR: someone registered and waits for activation
+  | 'announcement' // everyone in the audience: HR / IT published an announcement (تعميم)
+  | 'document_added' // employee: HR / IT attached a document (ملحق) to his file
 
 export async function notify(
   userIds: number[],

@@ -2,7 +2,7 @@
 // Record a deduction for an employee (directors: their team; HR / IT: anyone).
 import type { EmployeeItem } from '~/composables/types'
 
-definePageMeta({ roles: ['DIRECTOR', 'HR', 'IT'] })
+definePageMeta({ roles: ['DIRECTOR', 'HR', 'IT', 'CEO'] })
 
 const route = useRoute()
 const { t, locale } = useI18n()

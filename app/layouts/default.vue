@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const { t, locale, setLocale } = useI18n()
-const { user, clear, fetch: refreshSession } = useUserSession()
+const { user, session, clear, fetch: refreshSession } = useUserSession()
 const perms = usePermissions()
 const route = useRoute()
 
@@ -18,6 +18,7 @@ onBeforeUnmount(() => clearInterval(timer))
 
 const nav = computed(() => [
   { to: '/', icon: 'home', label: t('nav.home'), show: true },
+  { to: '/announcements', icon: 'megaphone', label: t('nav.announcements'), show: true },
   { to: '/requests/hourly-leave', icon: 'leave', label: t('kinds.HOURLY_LEAVE_plural'), show: true },
   { to: '/requests/vacation', icon: 'vacation', label: t('kinds.VACATION_plural'), show: true },
   { to: '/requests/advance', icon: 'advance', label: t('kinds.ADVANCE_plural'), show: true },
@@ -27,6 +28,7 @@ const nav = computed(() => [
   { to: '/admin/payroll', icon: 'money', label: t('nav.payroll'), show: perms.hasTeam.value },
   { to: '/admin/import', icon: 'upload', label: t('nav.import'), show: perms.canManage.value },
   { to: '/admin/settings', icon: 'settings', label: t('nav.settings'), show: perms.canViewAll.value },
+  { to: '/documents', icon: 'paperclip', label: t('nav.documents'), show: true },
   { to: '/profile', icon: 'user', label: t('nav.profile'), show: true },
 ].filter(i => i.show))
 
@@ -39,6 +41,20 @@ async function switchLanguage() {
   await refreshSession()
 }
 
+// "Log in as": HR / IT go back to their own account
+const impersonator = computed(() => session.value?.impersonator)
+const stopping = ref(false)
+async function stopImpersonating() {
+  stopping.value = true
+  try {
+    await $fetch('/api/auth/stop-impersonating', { method: 'POST' })
+    window.location.href = '/employees'
+  }
+  catch {
+    stopping.value = false
+  }
+}
+
 async function logout() {
   await $fetch('/api/auth/logout', { method: 'POST' })
   await clear()
@@ -48,6 +64,17 @@ async function logout() {
 
 <template>
   <div class="min-h-dvh pb-[env(safe-area-inset-bottom)]">
+    <!-- "Log in as" banner -->
+    <div v-if="impersonator" class="fixed inset-x-0 bottom-0 z-40 bg-amber-400 pb-[env(safe-area-inset-bottom)] text-amber-950 shadow-[0_-4px_12px_rgba(0,0,0,.12)]">
+      <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
+        <AppIcon name="user" :size="18" />
+        <p class="flex-1 font-medium">{{ t('impersonate.banner', { name: user?.name, admin: impersonator.name }) }}</p>
+        <button type="button" class="rounded-lg bg-amber-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-900 disabled:opacity-60" :disabled="stopping" @click="stopImpersonating">
+          {{ t('impersonate.stop') }}
+        </button>
+      </div>
+    </div>
+
     <!-- Top bar -->
     <header class="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur">
       <div class="mx-auto flex h-16 max-w-5xl items-center gap-2 px-4">
@@ -130,7 +157,7 @@ async function logout() {
       </div>
     </aside>
 
-    <main class="mx-auto max-w-5xl px-4 py-5">
+    <main class="mx-auto max-w-5xl px-4 py-5" :class="{ 'pb-24': impersonator }">
       <slot />
     </main>
   </div>
