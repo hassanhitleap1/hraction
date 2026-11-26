@@ -26,10 +26,11 @@ test('password hash round-trip', async () => {
   assert.notEqual(await hashPassword('same'), await hashPassword('same'), 'salted')
 })
 
-test('password strength rules', () => {
+test('simple passwords are accepted (minimum 4 characters only)', () => {
+  assert.equal(isStrongPassword('1234'), true)
   assert.equal(isStrongPassword('abc12345'), true)
-  assert.equal(isStrongPassword('كلمة1234'), true)
-  assert.equal(isStrongPassword('12345678'), false)
-  assert.equal(isStrongPassword('abcdefgh'), false)
-  assert.equal(isStrongPassword('ab12'), false)
+  assert.equal(isStrongPassword('12345678'), true)
+  assert.equal(isStrongPassword('كلمة'), true)
+  assert.equal(isStrongPassword('123'), false)
+  assert.equal(isStrongPassword(''), false)
 })

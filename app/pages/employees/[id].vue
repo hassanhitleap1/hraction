@@ -3,6 +3,7 @@
 // /employees/new opens the same form empty (add employee).
 import type { Balance } from '~/composables/useMe'
 import type { EmployeeItem, LookupsResponse } from '~/composables/types'
+import { accruedLeaveDays, parseDateOnly } from '#shared/business/calc'
 
 definePageMeta({ roles: ['DIRECTOR', 'HR', 'IT', 'CEO'] })
 
@@ -49,6 +50,10 @@ const form = reactive({
   mustChangePassword: true,
 })
 const showPassword = ref(false)
+// While true, the two leave inputs show the balance calculated from the hire date and are saved as "use default".
+// Typing in an input turns it off (his own number is then saved as typed).
+const annualAuto = ref(true)
+const sickAuto = ref(true)
 
 function fillForm() {
   const u = details.value?.user
@@ -70,8 +75,37 @@ function fillForm() {
     password: '',
     mustChangePassword: true,
   })
+  annualAuto.value = u.annualLeaveDays === null
+  sickAuto.value = u.sickLeaveDays === null
 }
 fillForm()
+
+// Balance by default from the hire date: annual = days earned so far (yearly / 12 / 30 per day), sick = the full yearly days.
+const balancePreview = computed(() => {
+  const hire = form.hireDate ? parseDateOnly(form.hireDate) : null
+  const defaults = lookups.value?.defaults
+  if (!hire || !defaults) return null
+  const annualYearly = !annualAuto.value && Number(form.annualLeaveDays) ? Number(form.annualLeaveDays) : defaults.annualLeaveDays
+  const sickYearly = !sickAuto.value && (form.sickLeaveDays as unknown) !== '' && form.sickLeaveDays !== null ? Number(form.sickLeaveDays) : defaults.sickLeaveDays
+  const now = new Date()
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  const endOfYear = new Date(Date.UTC(now.getFullYear(), 11, 31))
+  return {
+    // Whole-year entitlement from the hire date (hired on Jan 1 = the full 14 days)
+    annualYear: accruedLeaveDays(annualYearly, hire, endOfYear),
+    // Earned so far, i.e. what he can use today
+    annualNow: accruedLeaveDays(annualYearly, hire, today),
+    sick: sickYearly,
+  }
+})
+
+// Put the calculated balance inside the inputs when the hire date is entered / changed
+watch(() => [form.hireDate, balancePreview.value?.annualYear, balancePreview.value?.sick] as const, () => {
+  const p = balancePreview.value
+  if (!p) return
+  if (annualAuto.value) form.annualLeaveDays = p.annualYear
+  if (sickAuto.value) form.sickLeaveDays = p.sick
+}, { immediate: true })
 
 const department = computed(() => lookups.value?.departments.find(d => d.id === form.departmentId))
 
@@ -108,8 +142,8 @@ async function save() {
     position: form.position || null,
     hireDate: form.hireDate || null,
     baseSalary: Number(form.baseSalary),
-    annualLeaveDays: form.annualLeaveDays === null || (form.annualLeaveDays as unknown) === '' ? null : Number(form.annualLeaveDays),
-    sickLeaveDays: form.sickLeaveDays === null || (form.sickLeaveDays as unknown) === '' ? null : Number(form.sickLeaveDays),
+    annualLeaveDays: annualAuto.value || form.annualLeaveDays === null || (form.annualLeaveDays as unknown) === '' ? null : Number(form.annualLeaveDays),
+    sickLeaveDays: sickAuto.value || form.sickLeaveDays === null || (form.sickLeaveDays as unknown) === '' ? null : Number(form.sickLeaveDays),
   }
   try {
     if (isNew) {
@@ -200,8 +234,8 @@ async function resetPassword() {
       </dl>
 
       <div class="grid grid-cols-3 gap-3 text-center">
-        <div class="card p-3"><p class="text-xs text-slate-500">{{ t('subtypes.annual') }}</p><p class="mt-1 font-bold">{{ details.balances.annual.remaining }}/{{ details.balances.annual.allowance }}</p></div>
-        <div class="card p-3"><p class="text-xs text-slate-500">{{ t('subtypes.sick') }}</p><p class="mt-1 font-bold">{{ details.balances.sick.remaining }}/{{ details.balances.sick.allowance }}</p></div>
+        <div class="card p-3"><p class="text-xs text-slate-500">{{ t('subtypes.annual') }}</p><p class="mt-1 font-bold">{{ details.balances.annual.remaining }}/{{ details.balances.annual.earned }}</p></div>
+        <div class="card p-3"><p class="text-xs text-slate-500">{{ t('subtypes.sick') }}</p><p class="mt-1 font-bold">{{ details.balances.sick.remaining }}/{{ details.balances.sick.earned }}</p></div>
         <div class="card p-3"><p class="text-xs text-slate-500">{{ t('kinds.HOURLY_LEAVE') }}</p><p class="mt-1 font-bold">{{ details.balances.hourly.remaining }}/{{ details.balances.hourly.allowance }}</p></div>
       </div>
 
@@ -294,13 +328,24 @@ async function resetPassword() {
         <label class="label" for="hireDate">{{ t('profile.hireDate') }}</label>
         <input id="hireDate" v-model="form.hireDate" class="input" type="date">
       </div>
+      <div v-if="balancePreview" class="rounded-xl bg-brand-50 p-3 text-sm ring-1 ring-brand-100 sm:col-span-2">
+        <p class="font-semibold text-slate-800">{{ t('employees.balancePreview') }}</p>
+        <p class="mt-1 text-slate-700">
+          {{ t('subtypes.annual') }}: <b class="ltr-nums">{{ balancePreview.annualYear }}</b> {{ t('employees.daysThisYear') }}
+          · {{ t('subtypes.sick') }}: <b class="ltr-nums">{{ balancePreview.sick }}</b>
+        </p>
+        <p class="mt-1 text-slate-700">
+          {{ t('employees.availableNow') }}: <b class="ltr-nums">{{ balancePreview.annualNow }}</b>
+        </p>
+        <p class="mt-1 text-xs text-slate-500">{{ t('employees.balancePreviewHint') }}</p>
+      </div>
       <div>
         <label class="label" for="annual">{{ t('employees.annualOverride') }}</label>
-        <input id="annual" v-model.number="form.annualLeaveDays" class="input" type="number" min="0" :placeholder="t('employees.useDefault')">
+        <input id="annual" v-model.number="form.annualLeaveDays" class="input" type="number" min="0" step="any" @input="annualAuto = false" :placeholder="t('employees.useDefault')">
       </div>
       <div>
         <label class="label" for="sick">{{ t('employees.sickOverride') }}</label>
-        <input id="sick" v-model.number="form.sickLeaveDays" class="input" type="number" min="0" :placeholder="t('employees.useDefault')">
+        <input id="sick" v-model.number="form.sickLeaveDays" class="input" type="number" min="0" step="any" @input="sickAuto = false" :placeholder="t('employees.useDefault')">
       </div>
       <div class="sm:col-span-2">
         <span class="label">{{ t('employees.daysOff') }}</span>

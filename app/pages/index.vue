@@ -152,11 +152,11 @@ const tiles = computed(() => {
     <div v-if="me" class="mt-4 grid grid-cols-2 gap-3">
       <div class="card p-4">
         <p class="text-xs text-slate-500">{{ t('subtypes.annual') }}</p>
-        <p class="mt-1 text-xl font-bold text-slate-900">{{ me.balances.annual.remaining }} <span class="text-sm font-normal text-slate-400">/ {{ me.balances.annual.allowance }}</span></p>
+        <p class="mt-1 text-xl font-bold text-slate-900">{{ me.balances.annual.remaining }} <span class="text-sm font-normal text-slate-400">/ {{ me.balances.annual.earned }}</span></p>
       </div>
       <div class="card p-4">
         <p class="text-xs text-slate-500">{{ t('subtypes.sick') }}</p>
-        <p class="mt-1 text-xl font-bold text-slate-900">{{ me.balances.sick.remaining }} <span class="text-sm font-normal text-slate-400">/ {{ me.balances.sick.allowance }}</span></p>
+        <p class="mt-1 text-xl font-bold text-slate-900">{{ me.balances.sick.remaining }} <span class="text-sm font-normal text-slate-400">/ {{ me.balances.sick.earned }}</span></p>
       </div>
     </div>
   </div>

@@ -2,7 +2,7 @@
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { directorsOf, initialRequestStatus } from '#shared/business/access'
-import { checkBalance, countVacationDays, effectiveWeekendDays, hoursBetween, isValidTime, parseDateOnly } from '#shared/business/calc'
+import { checkBalance, countVacationDays, departureLeaveDays, effectiveWeekendDays, hoursBetween, isValidTime, parseDateOnly } from '#shared/business/calc'
 
 const reason = z.string().trim().max(1000).optional().nullable()
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -45,9 +45,19 @@ export default defineEventHandler(async (event) => {
     const hours = hoursBetween(body.fromTime, body.toTime)
     if (hours <= 0) fail(400, 'invalid_time_range')
 
-    const balances = await getBalances(user, settings, date)
-    const check = checkBalance(balances.hourly.allowance, balances.hourly.used, hours)
-    if (!check.ok) fail(400, 'insufficient_hourly_balance', { remaining: check.remaining })
+    // A personal departure is deducted from the annual leave earned so far (work departures are not).
+    // 3 hours or more on the same day = one full day, otherwise hours / 8.
+    if (body.subtype === 'personal') {
+      const sameDay = await prisma.request.aggregate({
+        where: { userId: user.id, kind: 'HOURLY_LEAVE', subtype: 'personal', status: { in: [...COUNTING_STATUSES] }, date },
+        _sum: { hours: true },
+      })
+      const already = Number(sameDay._sum.hours ?? 0)
+      const cost = departureLeaveDays(already + hours) - departureLeaveDays(already)
+      const balances = await getBalances(user, settings, date)
+      const check = checkBalance(balances.annual.earned, balances.annual.used, cost)
+      if (!check.ok && cost > 0) fail(400, 'insufficient_hourly_balance', { remaining: check.remaining })
+    }
 
     fields = { subtype: body.subtype, date, fromTime: body.fromTime, toTime: body.toTime, hours }
   }
@@ -76,7 +86,7 @@ export default defineEventHandler(async (event) => {
 
     const balances = await getBalances(user, settings, start)
     const b = body.subtype === 'annual' ? balances.annual : balances.sick
-    const check = checkBalance(b.allowance, b.used, days)
+    const check = checkBalance(b.earned, b.used, days)
     if (!check.ok) fail(400, 'insufficient_vacation_balance', { remaining: check.remaining })
 
     fields = { subtype: body.subtype, startDate: start, endDate: end, days }

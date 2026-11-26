@@ -156,6 +156,37 @@ export function accruedLeaveDays(yearlyDays: number, hireDate: Date | null, ref:
 }
 
 /**
+ * Unused leave rolls over: balance carried into `targetYear` after going through every year from `startYear`.
+ * Each year: carry = max(0, carry + earned − used). `yearOf(y)` gives that year's earned and used days.
+ */
+export function rollOverInto(
+  startYear: number,
+  targetYear: number,
+  yearOf: (year: number) => { earned: number, used: number },
+): number {
+  let carry = 0
+  for (let y = startYear; y < targetYear; y++) {
+    const { earned, used } = yearOf(y)
+    carry = Math.max(0, Math.round((carry + earned - used) * 100) / 100)
+  }
+  return carry
+}
+
+export const HOURS_PER_DAY = 8
+/** Hours taken on the same day from which a personal departure (مغادرة) counts as a full day of leave. */
+export const FULL_DAY_DEPARTURE_HOURS = 3
+
+/**
+ * Annual-leave days that a personal departure costs, given ALL his departure hours on one date:
+ * 3 hours or more on the same day = one full day; less than that = hours / 8.
+ */
+export function departureLeaveDays(hoursOnDay: number): number {
+  if (hoursOnDay <= 0) return 0
+  if (hoursOnDay >= FULL_DAY_DEPARTURE_HOURS) return 1
+  return Math.round((hoursOnDay / HOURS_PER_DAY) * 100) / 100
+}
+
+/**
  * Weekly days off stored on an employee ("5,6"; "" = works every day; null = use the company setting).
  * Days: 0 = Sunday … 6 = Saturday.
  */

@@ -13,5 +13,7 @@ export default defineEventHandler(async (event) => {
       branches: d.branches.map(b => serializeBranch(b)!),
     })),
     roles: ROLES,
+    // Default yearly leave days (used to preview a new employee's balance)
+    defaults: await getSettings().then(s => ({ annualLeaveDays: s.annualLeaveDays, sickLeaveDays: s.sickLeaveDays })),
   }
 })

@@ -35,7 +35,9 @@ export async function verifyPassword(password: string, stored: string): Promise<
   return key.length === expected.length && timingSafeEqual(key, expected)
 }
 
-/** Password rules: at least 8 characters, with at least one letter and one number. */
+/** Password rule: simple passwords are allowed — just at least 4 characters (no letter/number/case requirements). */
+export const MIN_PASSWORD_LENGTH = 4
+
 export function isStrongPassword(password: string): boolean {
-  return password.length >= 8 && /[A-Za-z؀-ۿ]/.test(password) && /\d/.test(password)
+  return password.length >= MIN_PASSWORD_LENGTH
 }

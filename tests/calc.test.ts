@@ -103,3 +103,32 @@ test('per-employee weekend days override the company setting', async () => {
   assert.equal(countVacationDays(d('2026-11-19'), d('2026-11-22'), effectiveWeekendDays('5,6', [5])), 2)
   assert.equal(countVacationDays(d('2026-11-19'), d('2026-11-22'), effectiveWeekendDays(null, [5])), 3)
 })
+
+test('personal departures: 3h+ on the same day = 1 day, otherwise hours / 8', async () => {
+  const { departureLeaveDays } = await import('../shared/business/calc.ts')
+  assert.equal(departureLeaveDays(0), 0)
+  assert.equal(departureLeaveDays(1), 0.13)
+  assert.equal(departureLeaveDays(2.5), 0.31)
+  assert.equal(departureLeaveDays(3), 1)
+  assert.equal(departureLeaveDays(8), 1)
+})
+
+test('hired today cannot take a day; hired a month ago can take part of a day', async () => {
+  const { accruedLeaveDays, checkBalance } = await import('../shared/business/calc.ts')
+  const d = (s: string) => new Date(`${s}T00:00:00.000Z`)
+  const today = accruedLeaveDays(14, d('2026-11-24'), d('2026-11-24'))
+  assert.equal(checkBalance(today, 0, 1).ok, false)
+  const monthAgo = accruedLeaveDays(14, d('2026-10-24'), d('2026-11-24')) // 31 days → 1.21
+  assert.equal(monthAgo, 1.21)
+  assert.equal(checkBalance(monthAgo, 0, 1).ok, true)
+  assert.equal(checkBalance(monthAgo, 0, 2).ok, false)
+})
+
+test('unused leave rolls over into the new year', async () => {
+  const { rollOverInto } = await import('../shared/business/calc.ts')
+  // 2025: earned 14, used 4 → 10 carried; 2026: earned 14, used 20 → 4 carried (never negative)
+  const years: Record<number, { earned: number, used: number }> = { 2025: { earned: 14, used: 4 }, 2026: { earned: 14, used: 20 } }
+  assert.equal(rollOverInto(2025, 2025, y => years[y]!), 0, 'first year: nothing carried in')
+  assert.equal(rollOverInto(2025, 2026, y => years[y]!), 10)
+  assert.equal(rollOverInto(2025, 2027, y => years[y]!), 4)
+})

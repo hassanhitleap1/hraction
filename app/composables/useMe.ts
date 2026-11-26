@@ -1,6 +1,6 @@
 import type { HrSettings } from '#shared/business/types'
 
-export interface Balance { allowance: number, earned: number, used: number, remaining: number }
+export interface Balance { allowance: number, earned: number, carryOver: number, used: number, remaining: number }
 
 export interface MeResponse {
   user: {

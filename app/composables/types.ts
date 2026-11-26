@@ -80,6 +80,7 @@ export interface EmployeeItem {
 export interface LookupsResponse {
   departments: (NamedRef & { hasBranches: boolean, branches: (NamedRef & { departmentId: number })[] })[]
   roles: { code: EmployeeItem['role'], nameAr: string, nameEn: string }[]
+  defaults: { annualLeaveDays: number, sickLeaveDays: number }
 }
 
 export interface AnnouncementItem {
